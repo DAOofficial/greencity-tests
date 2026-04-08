@@ -12,6 +12,21 @@ The objective is to analyze the GreenCity events page and document at least 3 st
 
 ## Repository Structure
 * `test-cases/events-page-tests.md` — Contains 3 detailed test cases in Markdown format.
+* `tests/test_events_page.py` — Contains 3 implemented test cases with Selenium.
+* `requirements.txt` - requirements for the project
+
+
+## Known Issues:
+
+test_status_checkbox may fail
+When both "Open" and "Closed" checkboxes are deselected, the UI does not select "Any status".
+
+
+## Execution instructions
+1. Clone repository
+2. Install dependencies: `pip install -r requirements.txt`
+3. Run tests: `python -m unittest discover tests`
+
 
 ## Author
 * **Name:** Andrii Doroshuk
