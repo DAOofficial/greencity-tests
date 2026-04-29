@@ -1,123 +1,93 @@
-import unittest
-from selenium import webdriver
-from selenium.webdriver.common.by import By
-from selenium.webdriver.support.wait import WebDriverWait
+import pytest
+import allure
 
+from events_page import EventsPage
 
-class EventsPage(unittest.TestCase):
+BASE_URL = "https://www.greencity.cx.ua/#/greenCity/events"
 
-    BASE_URL = "https://www.greencity.cx.ua/#/greenCity/events"
+@allure.feature("Filter events by status checkbox")
+@allure.story("Filter events by status")
+@allure.severity(allure.severity_level.NORMAL)
+def test_status_checkbox(init_driver):
+        page = EventsPage(init_driver)
+        with allure.step("Open page"):
+            initial_count = page.get_cards_count()
+            status = page.status_filter()
+            status.toggle()
+        with allure.step("Select checkbox and click open"):
+            # Open testing
+            status.select("Open")
+            status.toggle()
+            cards = page.get_cards()
+            assert len(cards) > 0, "No cards found"
+            for card in cards:
+                assert card.get_status() == "OPEN", "Not all found events are open"
+            status.toggle()
+            status.select("Open")
+            status.toggle()
+            assert len(page.get_cards()) == initial_count, "All events not displayed again"
+            status.toggle()
 
-    def setUp(self):
-        opt = webdriver.ChromeOptions()
-        self.driver = webdriver.Chrome(options=opt)
-        self.driver.implicitly_wait(10)
-        self.driver.maximize_window()
-        self.driver.get(self.BASE_URL)
+        with allure.step("Select checkbox and click closed"):
+            # Closed testing
+            status.select("Closed")
+            status.toggle()
+            cards = page.get_cards()
+            for card in cards:
+                assert card.get_status() == "CLOSED", "Not all found events are closed"
+            status.toggle()
+            status.select("Closed")
+            status.toggle()
+        with allure.step("Select checkbox and click any status"):
+            # Any status testing
+            status.toggle()
+            status.select("Any status")
+            assert status.get_state("Open"), "Open is not selected"
+            assert status.get_state("Closed"), "Closed is not selected"
+            status.toggle()
+            assert len(page.get_cards()) == initial_count, "Not all events are displayed again"
+            status.toggle()
+            if status.get_state("Any status"):
+                status.select("Any status")
+        with allure.step("Select checkbox and click both open and closed"):
+            status.select("Open")
+            status.select("Closed")
+            assert status.get_state("Any status"), "Any status not linked when all options selected"
+            status.toggle()
+            assert len(page.get_cards()) == initial_count, "Not all events are displayed again"
 
-    def toggle_status_menu(self):
-        """Opens or closes status menu"""
-        status_label = self.driver.find_element(By.XPATH, "//mat-label[contains(text(), 'Status')]")
-        self.driver.execute_script("arguments[0].click();", status_label)
-
-    def get_event_cards(self):
-        return self.driver.find_elements(By.CLASS_NAME, "card-wrapper")
-
-    def select_option(self, option_name):
-        xpath = f"//mat-option//span[contains(text(), '{option_name}')]"
-        option = self.driver.find_element(By.XPATH, xpath)
-        option.click()
-
-    def get_option_state(self, option_name):
-        xpath = f"//mat-option//span[contains(text(), '{option_name}')]/ancestor::mat-option"
-        return self.driver.find_element(By.XPATH, xpath).get_attribute("aria-selected")
-
-    def test_status_checkbox(self):
-        initial_count = len(self.get_event_cards())
-        self.toggle_status_menu()
-
-        # Open testing
-        self.select_option("Open")
-        self.toggle_status_menu()
-        cards = self.get_event_cards()
-        self.assertGreater(len(cards), 0)
-        for card in cards:
-            status = card.find_element(By.CLASS_NAME, "event-status").text
-            self.assertEqual(status.strip().upper(), "OPEN")
-        self.toggle_status_menu()
-        self.select_option("Open")
-        self.toggle_status_menu()
-        self.assertEqual(len(self.get_event_cards()), initial_count)
-        self.toggle_status_menu()
-
-        # Closed testing
-        self.select_option("Closed")
-        self.toggle_status_menu()
-        cards = self.get_event_cards()
-        for card in cards:
-            status = card.find_element(By.CLASS_NAME, "event-status").text
-            self.assertEqual(status.strip().upper(), "CLOSED")
-        self.toggle_status_menu()
-        self.select_option("Closed")
-        self.toggle_status_menu()
-
-        # Any status testing
-        self.toggle_status_menu()
-        self.select_option("Any status")
-        self.assertEqual(self.get_option_state("Open"), "true")
-        self.assertEqual(self.get_option_state("Closed"), "true")
-        self.toggle_status_menu()
-        self.assertEqual(len(self.get_event_cards()), initial_count)
-        self.toggle_status_menu()
-        if self.get_option_state("Any status") == "true":
-            self.select_option("Any status")
-        self.select_option("Open")
-        self.select_option("Closed")
-        self.assertEqual(self.get_option_state("Any status"), "true", "Any status not linked when all options selected")
-        self.toggle_status_menu()
-        self.assertEqual(len(self.get_event_cards()), initial_count)
-
-    def test_search_validation(self):
+@allure.feature("Verify search events")
+@allure.story("Verify search by 1 valid and 1 failing search")
+@allure.severity(allure.severity_level.MINOR)
+def test_search_validation(init_driver):
+    page = EventsPage(init_driver)
+    with allure.step("Select search and input valid phrase"):
         test_phrase_true = "Event"
         test_phrase_fail = "Event54321"
-        search_icon = self.driver.find_element(By.CSS_SELECTOR, ".search-img")
-        search_icon.click()
-        text_field = self.driver.find_element(By.XPATH, "//input[@placeholder='Search']")
-        text_field.clear()
-        text_field.send_keys(test_phrase_true)
-        event_names = self.driver.find_elements(By.CLASS_NAME, "event-name")
-        self.assertGreater(len(event_names), 0, "Event list is empty")
-        for event in event_names:
-            actual_title = event.text
-            self.assertIn(test_phrase_true.upper(), actual_title.upper(),
-                          f"Event '{actual_title}' doesn`t contain searched '{test_phrase_true}'")
-        text_field.clear()
-        text_field.send_keys(test_phrase_fail)
-        error_msg_element = self.driver.find_element(By.XPATH, "//*[contains(text(), \"didn't find any results\")]")
+        search = page.search()
+        search.open()
+        search.type(test_phrase_true)
+        cards = page.get_cards()
+        assert len(cards) > 0, "Event list is empty"
+        for card in cards:
+            title = card.get_title().upper()
+            expected = test_phrase_true.upper()
+            assert expected in title, f"Event '{card.get_title()}' doesn't contain '{test_phrase_true}'"
+    with allure.step("Select search and input fail phrase"):
+        search.type(test_phrase_fail)
         expected_text = "We didn't find any results matching to this search"
-        actual_text = error_msg_element.text.strip()
-        self.assertEqual(actual_text, expected_text, "Empty search text is incorrect")
+        error = search.get_error()
+        assert error == expected_text, "Empty search text is incorrect"
 
-
-    def test_create_event_authorization(self):
-        create_event_btn = self.driver.find_element(By.XPATH, "//button[contains(text(), 'Create event')]")
-        create_event_btn.click()
-        wait = WebDriverWait(self.driver, 10)
-        modal_xpath = "//app-auth-modal"
-        sign_in_modal = wait.until(
-            lambda d: d.find_element(By.XPATH, modal_xpath).is_displayed() and d.find_element(By.XPATH, modal_xpath))
-        self.assertTrue(sign_in_modal.is_displayed(), "Sign in modal window is not displayed")
-        close_icon = self.driver.find_element(By.CSS_SELECTOR, "img.cross-btn")
-        self.driver.execute_script("arguments[0].click();", close_icon)
-        wait.until(lambda d: len(d.find_elements(By.XPATH, modal_xpath)) == 0)
-        modals = self.driver.find_elements(By.XPATH, "//app-auth-modal")
-        self.assertEqual(len(modals), 0, "Sign in modal window is not closed")
-
-
-    def tearDown(self):
-        if self.driver:
-            self.driver.quit()
-
-
-if __name__ == "__main__":
-    unittest.main()
+@allure.feature("Verify auth prompt")
+@allure.story("Verify auth prompt to create event")
+@allure.severity(allure.severity_level.CRITICAL)
+def test_create_event_authorization(init_driver):
+        page = EventsPage(init_driver)
+        page.header().click_create_event()
+        modal = page.auth_modal()
+        modal.wait_visible()
+        assert modal.is_visible(), "Sign in modal window is not displayed"
+        modal.close()
+        modal.wait_closed(10)
+        assert modal.is_visible() == False, "Sign in modal window not disappear"
