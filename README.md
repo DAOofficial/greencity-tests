@@ -25,7 +25,8 @@ When both "Open" and "Closed" checkboxes are deselected, the UI does not select 
 ## Execution instructions
 1. Clone repository
 2. Install dependencies: `pip install -r requirements.txt`
-3. Run tests: `python -m unittest discover tests`
+3. Run tests: `pytest --alluredir=allure-results`
+4. To watch allure report run `allure serve allure-results`
 
 
 ## Author

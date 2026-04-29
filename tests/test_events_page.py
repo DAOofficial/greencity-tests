@@ -1,7 +1,7 @@
 import pytest
 import allure
 
-from events_page import EventsPage
+from src.pages.events_page import EventsPage
 
 BASE_URL = "https://www.greencity.cx.ua/#/greenCity/events"
 
